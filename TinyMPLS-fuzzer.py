@@ -3,14 +3,11 @@
 
 logo = (
 """
-888     888 8888888b.  8888888888                                          
-888     888 888   Y88b 888                                                 
-888     888 888    888 888                                                 
-Y88b   d88P 888   d88P 8888888 888  888 88888888 88888888  .d88b.  888d888 
- Y88b d88P  8888888P"  888     888  888    d88P     d88P  d8P  Y8b 888P"   
-  Y88o88P   888 T88b   888     888  888   d88P     d88P   88888888 888     
-   Y888P    888  T88b  888     Y88b 888  d88P     d88P    Y8b.     888     
-    Y8P     888   T88b 888      "Y88888 88888888 88888888  "Y8888  888  
+   _    _    _    _    _    _    _    _  
+  / \  / \  / \  / \  / \  / \  / \  / \ 
+ ( V )( R )( F )( u )( z )( z )( e )( r )
+  \_/  \_/  \_/  \_/  \_/  \_/  \_/  \_/ 
+
 """)
 
 
@@ -30,11 +27,12 @@ scapy.load_contrib('mpls')
 parser = argparse.ArgumentParser(description='Argument')
 parser.add_argument('iface', type=str, help='source interfaces which IP address will be used (IPv4 by default)')
 parser.add_argument('dst', type=str, help='destination IP address (IPv4 by default)')
+parser.add_argument('labels', type=str, help='what labels to use. Example: 12-24,40,60')
 parser.add_argument('--ipv6', help='use IPv6 addresses', action='store_true')
 args = parser.parse_args()
 
 network_interfaces_list = netifaces.interfaces()
-
+labels_list = []
 
 if args.iface not in network_interfaces_list:
 	print('[Error] Wrong interface:',args.iface)
@@ -54,7 +52,7 @@ else:
 	dst_next_hop = os.popen('ip route g 8.8.8.8 | grep via | cut -d " " -f 3 ').read()[:-1]
 	dst_mac =  os.popen(' arp ' + dst_next_hop + ' |  awk \'{print $3}\' | tail -n 1').read()[:-1]
 
-	print(Fore.BLUE + 'Source')
+	print('Source')
 	print(' MAC\t',src_mac)
 	print(' IP\t',src_ip)
 	print('Destination')
@@ -62,12 +60,37 @@ else:
 	print(' IP\t',dst_ip)
 	print(' hop\t',dst_next_hop)
 
+
+	# Parse supplied lables range
+	# and create array of all possible integers.
+	# Not really elegant solution, but quick
+	labels_h = args.labels.split(',')
+	for label_supplied in labels_h:
+		label = label_supplied.split('-')
+		if len(label) == 1:
+			labels_list.append(int(label_supplied))
+		else:
+			for l in range(int(label[0]),int(label[1])):
+				labels_list.append(l)
+
+	labels_list.sort()
+
+	print('Lables')
+	print(' count\t',len(labels_list))
+	print(labels_list)
+
+
+	# Initialize L2, L3 and ICMP
 	ethernet = scapy.Ether(src=src_mac, dst=dst_mac)
 	ip = scapy.IP(src=src_ip, dst=dst_ip)
-	mpls = MPLS(label=10)
 	icmp = scapy.ICMP()
+
+	# Send packets
+	for label_in_list in labels_list:
+		mpls = MPLS(label=label_in_list)
+		#print('mpls',mpls,label_in_list)
+		#scapy.sendp(ethernet/mpls/ip/icmp, iface=args.iface)
 	#udp = scapy.UDP(sport=646,dport=646)
-	#scapy.sendp(ethernet/ip/mpls/ICMP, iface=args.iface)
 
 
 	#network_interfaces = os.listdir('/sys/class/net/')
