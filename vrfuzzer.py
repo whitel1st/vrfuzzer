@@ -20,7 +20,6 @@ import scapy.all as scapy
 import argparse
 import netifaces
 import os
-from colorama import Fore
 
 scapy.load_contrib('mpls')
 
@@ -29,6 +28,7 @@ parser.add_argument('iface', type=str, help='source interfaces which IP address 
 parser.add_argument('dst', type=str, help='destination IP address (IPv4 by default)')
 parser.add_argument('labels', type=str, help='what labels to use. Example: 12-24,40,60')
 parser.add_argument('--ipv6', help='use IPv6 addresses', action='store_true')
+parser.add_argument('--nlabel', help='nested label')
 args = parser.parse_args()
 
 network_interfaces_list = netifaces.interfaces()
@@ -60,7 +60,6 @@ else:
 	print(' IP\t',dst_ip)
 	print(' hop\t',dst_next_hop)
 
-
 	# Parse supplied lables range
 	# and create array of all possible integers.
 	# Not really elegant solution, but quick
@@ -79,7 +78,6 @@ else:
 	print(' count\t',len(labels_list))
 	print(labels_list)
 
-
 	# Initialize L2, L3 and ICMP
 	ethernet = scapy.Ether(src=src_mac, dst=dst_mac)
 	ip = scapy.IP(src=src_ip, dst=dst_ip)
@@ -87,10 +85,5 @@ else:
 
 	# Send packets
 	for label_in_list in labels_list:
-		mpls = MPLS(label=label_in_list)
-		#print('mpls',mpls,label_in_list)
-		#scapy.sendp(ethernet/mpls/ip/icmp, iface=args.iface)
-	#udp = scapy.UDP(sport=646,dport=646)
-
-
-	#network_interfaces = os.listdir('/sys/class/net/')
+		mpls = MPLS(label=label_in_list,ttl=252,s=1)
+		scapy.send(ethernet/mpls/ip/icmp, iface=args.iface)
